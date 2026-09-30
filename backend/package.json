@@ -1,0 +1,42 @@
+{
+  "name": "gst-invoice-hub-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "nodemailer": "^7.0.6",
+    "pdfkit": "^0.17.2",
+    "qrcode": "^1.5.4",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.2",
+    "@types/nodemailer": "^7.0.1",
+    "@types/pdfkit": "^0.17.3",
+    "@types/qrcode": "^1.5.6",
+    "prisma": "^6.16.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "allowScripts": {
+    "@prisma/engines@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "prisma@6.19.3": true,
+    "esbuild@0.28.2": true
+  }
+}

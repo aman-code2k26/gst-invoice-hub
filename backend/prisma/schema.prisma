@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  OVERDUE
+}
+
+enum TaxMode {
+  INTRA_STATE
+  INTER_STATE
+}
+
+model BusinessProfile {
+  id        String   @id @default(cuid())
+  name      String
+  ownerName String?
+  email     String?
+  phone     String?
+  address   String?
+  pan       String?
+  gstin     String?
+  state     String?
+  upiId     String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clients   Client[]
+  invoices  Invoice[]
+}
+
+model Client {
+  id         String          @id @default(cuid())
+  businessId String
+  name       String
+  email      String?
+  phone      String?
+  address    String?
+  gstin      String?
+  state      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  business   BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoices   Invoice[]
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  invoiceNumber  String        @unique
+  businessId     String
+  clientId       String
+  issueDate      DateTime      @default(now())
+  dueDate        DateTime
+  status         InvoiceStatus @default(DRAFT)
+  taxMode        TaxMode       @default(INTRA_STATE)
+  discount       Float         @default(0)
+  notes          String?
+  subtotal       Float         @default(0)
+  taxableAmount  Float         @default(0)
+  cgst           Float         @default(0)
+  sgst           Float         @default(0)
+  igst           Float         @default(0)
+  total          Float         @default(0)
+  upiLink        String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items          InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float
+  rate        Float
+  gstRate     Float
+  amount      Float
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
