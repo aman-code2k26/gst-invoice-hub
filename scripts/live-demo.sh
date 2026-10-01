@@ -15,6 +15,14 @@ export GIT_AUTHOR_EMAIL="274073220+aman-code2k26@users.noreply.github.com"
 export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
 export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 
+# locate node/npx (may live in nvm/homebrew/opencode tooling, not on default PATH)
+if ! command -v npx >/dev/null 2>&1; then
+  for cand in "$HOME"/.nvm/versions/node/*/bin /opt/homebrew/bin /usr/local/bin /private/var/folders/*/*/T/opencode/tools/node/bin; do
+    if [ -x "$cand/npm" ]; then export PATH="$cand:$PATH"; break; fi
+  done
+fi
+command -v npx >/dev/null 2>&1 || { echo "npx not found — install Node.js 20+ first"; exit 1; }
+
 # 1. cloudflared binary
 if [ ! -x /tmp/cloudflared ]; then
   echo "Downloading cloudflared..."

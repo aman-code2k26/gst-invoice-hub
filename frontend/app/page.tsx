@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard, FileText, Users, Settings, Plus, Download,
-  Send, CheckCircle2, Clock3, AlertTriangle, QrCode, Trash2, X
+  Mail, CheckCircle2, Clock3, AlertTriangle, Pencil, Trash2, X
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
@@ -33,6 +33,7 @@ export default function Home() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stats, setStats] = useState<any>({});
   const [showClient, setShowClient] = useState(false);
+  const [editClient, setEditClient] = useState<Client|null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -65,10 +66,22 @@ export default function Home() {
     load();
   }
 
-  async function remind(id:string) {
+  async function mailInvoice(i: Invoice) {
     try {
-      const r = await api(`/invoices/${id}/reminder`, {method:"POST", body:"{}"});
-      setMessage(r.sent ? "Reminder email sent." : r.message);
+      if (!i.client.email) {
+        setMessage(`No email for ${i.client.name} — open the Clients tab and edit the client to add one.`);
+        return;
+      }
+      const path = i.status === "DRAFT" ? `/invoices/${i.id}/send` : `/invoices/${i.id}/reminder`;
+      const r = await api(path, { method: "POST", body: "{}" });
+      if (r.sent) {
+        setMessage(i.status === "DRAFT"
+          ? `Invoice ${i.invoiceNumber} emailed to ${i.client.email} and marked SENT.`
+          : `Reminder for ${i.invoiceNumber} emailed to ${i.client.email}.`);
+        load();
+      } else {
+        setMessage(r.message);
+      }
     } catch(e:any) { setMessage(e.message); }
   }
 
@@ -125,20 +138,20 @@ export default function Home() {
         <div className="p-4 md:p-8">
           {message && <div className="mb-5 flex items-center justify-between rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-800"><span>{message}</span><button onClick={()=>setMessage("")}><X size={16}/></button></div>}
 
-          {tab==="dashboard" && <Dashboard stats={stats} invoices={invoices} downloadPDF={downloadPDF} changeStatus={changeStatus} remind={remind}/>}
-          {tab==="invoices" && <InvoiceList invoices={invoices} downloadPDF={downloadPDF} changeStatus={changeStatus} remind={remind}/>}
-          {tab==="clients" && <ClientList clients={clients} business={business} reload={load} showClient={showClient} setShowClient={setShowClient}/>}
+          {tab==="dashboard" && <Dashboard stats={stats} invoices={invoices} downloadPDF={downloadPDF} changeStatus={changeStatus} mailInvoice={mailInvoice}/>}
+          {tab==="invoices" && <InvoiceList invoices={invoices} downloadPDF={downloadPDF} changeStatus={changeStatus} mailInvoice={mailInvoice}/>}
+          {tab==="clients" && <ClientList clients={clients} business={business} reload={load} showClient={showClient} setShowClient={setShowClient} onEdit={setEditClient}/>}
           {tab==="settings" && <SettingsPanel business={business} setBusiness={setBusiness}/>}
         </div>
       </main>
 
-      {showClient && <ClientModal business={business} close={()=>setShowClient(false)} done={()=>{setShowClient(false);load();}}/>}
+      {(showClient || editClient) && <ClientModal business={business} client={editClient} close={()=>{setShowClient(false);setEditClient(null);}} done={()=>{setShowClient(false);setEditClient(null);load();}}/>}
       {showInvoice && <InvoiceModal business={business} clients={clients} close={()=>setShowInvoice(false)} done={()=>{setShowInvoice(false);load();}}/>}
     </div>
   );
 }
 
-function Dashboard({stats,invoices,downloadPDF,changeStatus,remind}:any) {
+function Dashboard({stats,invoices,downloadPDF,changeStatus,mailInvoice}:any) {
   return <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Stat title="Total invoiced" value={money(stats.total)} icon={<FileText/>}/>
@@ -148,7 +161,7 @@ function Dashboard({stats,invoices,downloadPDF,changeStatus,remind}:any) {
     </div>
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between border-b p-5"><div><h2 className="font-black">Recent invoices</h2><p className="text-sm text-slate-500">Track your latest client billing</p></div></div>
-      <InvoiceTable invoices={invoices.slice(0,6)} downloadPDF={downloadPDF} changeStatus={changeStatus} remind={remind}/>
+      <InvoiceTable invoices={invoices.slice(0,6)} downloadPDF={downloadPDF} changeStatus={changeStatus} mailInvoice={mailInvoice}/>
     </div>
   </div>
 }
@@ -164,24 +177,35 @@ function statusStyle(s:string) {
   return "bg-slate-100 text-slate-600";
 }
 
-function InvoiceTable({invoices,downloadPDF,changeStatus,remind}:any) {
+function InvoiceTable({invoices,downloadPDF,changeStatus,mailInvoice}:any) {
   if(!invoices.length) return <div className="p-10 text-center text-slate-500">No invoices yet. Create your first invoice.</div>;
-  return <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-slate-50 text-left text-slate-500"><tr><th className="p-4">Invoice</th><th>Client</th><th>Due</th><th>Status</th><th>Amount</th><th className="pr-4">Actions</th></tr></thead><tbody>{invoices.map((i:Invoice)=><tr className="border-t" key={i.id}><td className="p-4 font-bold">{i.invoiceNumber}</td><td>{i.client.name}</td><td>{new Date(i.dueDate).toLocaleDateString("en-IN")}</td><td><span className={`badge ${statusStyle(i.status)}`}>{i.status}</span></td><td className="font-bold">{money(i.total)}</td><td className="pr-4"><div className="flex gap-2"><button title="Download PDF" onClick={()=>downloadPDF(i.id)} className="rounded-lg bg-slate-100 p-2"><Download size={15}/></button>{i.status!=="PAID"&&<button title="Mark paid" onClick={()=>changeStatus(i.id,"PAID")} className="rounded-lg bg-emerald-50 p-2 text-emerald-700"><CheckCircle2 size={15}/></button>}<button title="Reminder" onClick={()=>remind(i.id)} className="rounded-lg bg-amber-50 p-2 text-amber-700"><Send size={15}/></button></div></td></tr>)}</tbody></table></div>
+  return <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-slate-50 text-left text-slate-500"><tr><th className="p-4">Invoice</th><th>Client</th><th>Due</th><th>Status</th><th>Amount</th><th className="pr-4">Actions</th></tr></thead><tbody>{invoices.map((i:Invoice)=><tr className="border-t" key={i.id}><td className="p-4 font-bold">{i.invoiceNumber}</td><td className="py-4 pr-4"><div className="font-semibold">{i.client.name}</div><div className={`text-xs ${i.client.email?"text-slate-400":"text-amber-600"}`}>{i.client.email || "no email — add in Clients"}</div></td><td>{new Date(i.dueDate).toLocaleDateString("en-IN")}</td><td><span className={`badge ${statusStyle(i.status)}`}>{i.status}</span></td><td className="font-bold">{money(i.total)}</td><td className="pr-4"><div className="flex gap-2"><button title="Download PDF" onClick={()=>downloadPDF(i.id)} className="rounded-lg bg-slate-100 p-2"><Download size={15}/></button>{i.status!=="PAID"&&<button title="Mark paid" onClick={()=>changeStatus(i.id,"PAID")} className="rounded-lg bg-emerald-50 p-2 text-emerald-700"><CheckCircle2 size={15}/></button>}{i.status!=="PAID"&&<button title={i.status==="DRAFT"?`Email invoice to ${i.client.email||"client"}`:`Email reminder to ${i.client.email||"client"}`} onClick={()=>mailInvoice(i)} className="rounded-lg bg-amber-50 p-2 text-amber-700"><Mail size={15}/></button>}</div></td></tr>)}</tbody></table></div>;
 }
 
 function InvoiceList(props:any) {
   return <div className="card overflow-hidden"><div className="border-b p-5"><h2 className="font-black">All invoices</h2></div><InvoiceTable {...props}/></div>
 }
 
-function ClientList({clients,business,reload,setShowClient}:any) {
-  return <div className="space-y-5"><div className="flex items-center justify-between"><div><h2 className="text-xl font-black">Client address book</h2><p className="text-sm text-slate-500">Keep client billing details ready.</p></div><button className="btn-primary flex gap-2 items-center" onClick={()=>setShowClient(true)}><Plus size={18}/> Add client</button></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{clients.map((c:Client)=><div className="card p-5" key={c.id}><div className="flex justify-between"><div><h3 className="font-black">{c.name}</h3><p className="text-sm text-slate-500">{c.email || "No email"}</p></div><Users className="text-indigo-500"/></div><div className="mt-4 space-y-1 text-sm text-slate-600"><p>{c.phone || "—"}</p><p>{c.address || "Address not added"}</p><p>GSTIN: {c.gstin || "—"}</p></div></div>)}</div></div>
+function ClientList({clients,business,reload,setShowClient,onEdit}:any) {
+  return <div className="space-y-5"><div className="flex items-center justify-between"><div><h2 className="text-xl font-black">Client address book</h2><p className="text-sm text-slate-500">Keep client billing details ready.</p></div><button className="btn-primary flex gap-2 items-center" onClick={()=>setShowClient(true)}><Plus size={18}/> Add client</button></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{clients.map((c:Client)=><div className="card p-5" key={c.id}><div className="flex justify-between"><div><h3 className="font-black">{c.name}</h3><p className={`text-sm ${c.email?"text-slate-500":"text-amber-600"}`}>{c.email || "No email — add one to enable invoicing by mail"}</p></div><div className="flex items-start gap-2"><button title="Edit client" onClick={()=>onEdit(c)} className="rounded-lg bg-slate-100 p-2 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600"><Pencil size={15}/></button><Users className="text-indigo-500"/></div></div><div className="mt-4 space-y-1 text-sm text-slate-600"><p>{c.phone || "—"}</p><p>{c.address || "Address not added"}</p><p>GSTIN: {c.gstin || "—"}</p></div></div>)}</div></div>;
 }
 
-function ClientModal({business,close,done}:any) {
-  const [form,setForm]=useState({businessId:business.id,name:"",email:"",phone:"",address:"",gstin:"",state:business.state||""});
+function ClientModal({business,client,close,done}:any) {
+  const [form,setForm]=useState(client
+    ? {businessId:client.businessId,name:client.name,email:client.email||"",phone:client.phone||"",address:client.address||"",gstin:client.gstin||"",state:client.state||""}
+    : {businessId:business.id,name:"",email:"",phone:"",address:"",gstin:"",state:business.state||""});
   const [saving,setSaving]=useState(false);
-  async function save(){setSaving(true);try{await api("/clients",{method:"POST",body:JSON.stringify(form)});done()}catch(e:any){alert(e.message)}finally{setSaving(false)}}
-  return <Modal title="Add client" close={close}><div className="grid gap-4 md:grid-cols-2">{Object.entries(form).filter(([k])=>k!=="businessId").map(([k,v])=><label className={k==="address"?"md:col-span-2":""} key={k}><span className="mb-1 block text-sm font-semibold capitalize">{k}</span><input className="input" value={String(v)} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}</div><div className="mt-5 flex justify-end gap-2"><button className="btn-secondary" onClick={close}>Cancel</button><button className="btn-primary" onClick={save}>{saving?"Saving…":"Save client"}</button></div></Modal>
+  async function save(){
+    if(!form.name.trim()) return alert("Name is required.");
+    if(form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return alert("Enter a valid email address.");
+    setSaving(true);
+    try{
+      if(client) await api(`/clients/${client.id}`,{method:"PUT",body:JSON.stringify(form)});
+      else await api("/clients",{method:"POST",body:JSON.stringify(form)});
+      done()
+    }catch(e:any){alert(e.message)}finally{setSaving(false)}
+  }
+  return <Modal title={client?"Edit client":"Add client"} close={close}><div className="grid gap-4 md:grid-cols-2">{Object.entries(form).filter(([k])=>k!=="businessId").map(([k,v])=><label className={k==="address"?"md:col-span-2":""} key={k}><span className="mb-1 block text-sm font-semibold capitalize">{k==="email"?"Email (used for invoices)":k}</span><input className="input" value={String(v)} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}</div><div className="mt-5 flex justify-end gap-4"><button className="btn-secondary" onClick={close}>Cancel</button><button className="btn-primary" onClick={save}>{saving?"Saving…":(client?"Save changes":"Save client")}</button></div></Modal>;
 }
 
 function InvoiceModal({business,clients,close,done}:any) {
