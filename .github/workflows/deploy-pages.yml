@@ -31,7 +31,7 @@ jobs:
         working-directory: frontend
         env:
           NEXT_PUBLIC_BASE_PATH: /gst-invoice-hub
-          NEXT_PUBLIC_API_URL: https://leading-bedroom-magnet-colorado.trycloudflare.com/api
+          NEXT_PUBLIC_API_URL: https://william-caribbean-rom-courses.trycloudflare.com/api
         run: |
           npm ci
           npm run build
