@@ -2,11 +2,18 @@
 
 Hackathon-ready Micro-SaaS for student freelancers.
 
-**Live frontend:** https://aman-code2k26.github.io/gst-invoice-hub/ (GitHub Pages)
+## 🔴 Live demo (for judges)
 
-> The deployed UI calls the API at `NEXT_PUBLIC_API_URL` (build default: `http://localhost:4000/api`).
-> To make the live page fully functional, host the backend (Render/Railway/etc.), then set
-> `NEXT_PUBLIC_API_URL` in `.github/workflows/deploy-pages.yml` and push.
+**https://aman-code2k26.github.io/gst-invoice-hub/**
+
+Fully working deployment: static frontend on GitHub Pages + Express/Prisma API exposed
+through a Cloudflare tunnel. To restart the demo backend after a reboot, run:
+
+```bash
+./scripts/live-demo.sh
+```
+
+(it starts the API + tunnel, updates the public API URL, and redeploys the frontend — takes ~2 minutes)
 
 
 ## Features

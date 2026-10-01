@@ -31,6 +31,7 @@ jobs:
         working-directory: frontend
         env:
           NEXT_PUBLIC_BASE_PATH: /gst-invoice-hub
+          NEXT_PUBLIC_API_URL: https://discussing-surely-pharmacies-springs.trycloudflare.com/api
         run: |
           npm ci
           npm run build
