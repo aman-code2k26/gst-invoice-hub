@@ -72,7 +72,24 @@ export default function Home() {
     } catch(e:any) { setMessage(e.message); }
   }
 
-  if (loading || !business) return <div className="min-h-screen grid place-items-center"><div className="text-center"><div className="text-3xl font-black">InvoiceHub</div><p className="text-slate-500 mt-2">Loading workspace…</p></div></div>;
+  if (loading) return <div className="min-h-screen grid place-items-center"><div className="text-center"><div className="text-3xl font-black">InvoiceHub</div><p className="text-slate-500 mt-2">Loading workspace…</p></div></div>;
+
+  if (!business) return (
+    <div className="min-h-screen grid place-items-center p-6">
+      <div className="max-w-md text-center">
+        <div className="text-3xl font-black">InvoiceHub</div>
+        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          {message || "Cannot reach the API server."}
+        </p>
+        <p className="mt-3 text-sm text-slate-500">
+          Expected API at <code className="rounded bg-slate-100 px-1">{API}</code>.
+          Start the backend (<code className="rounded bg-slate-100 px-1">cd backend && npm run dev</code>)
+          or set <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_API_URL</code> to a hosted API.
+        </p>
+        <button className="btn-primary mt-5" onClick={load}>Retry</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen">
