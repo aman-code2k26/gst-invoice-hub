@@ -23,6 +23,27 @@ if ! command -v npx >/dev/null 2>&1; then
 fi
 command -v npx >/dev/null 2>&1 || { echo "npx not found — install Node.js 20+ first"; exit 1; }
 
+# 0. cloud backend on Render — preferred (works without this laptop).
+#    If it answers, point the live frontend at it and skip the local tunnel.
+RENDER_API="https://gst-invoice-hub-api.onrender.com"
+WORKFLOW="$ROOT/.github/workflows/deploy-pages.yml"
+echo "Checking cloud backend at $RENDER_API ..."
+if curl -s -m 60 "$RENDER_API/api/health" | grep -q '"ok"'; then
+  echo "Cloud backend OK — no local server or tunnel needed."
+  sed -i '' "s|NEXT_PUBLIC_API_URL: .*|NEXT_PUBLIC_API_URL: $RENDER_API/api|" "$WORKFLOW"
+  if ! git diff --quiet "$WORKFLOW"; then
+    echo "Pointing live frontend at Render..."
+    git add "$WORKFLOW"
+    git commit -q -m "Demo: point live frontend at Render backend"
+    git push -q origin main
+    echo "Frontend redeploys in ~1-2 min: https://aman-code2k26.github.io/gst-invoice-hub/"
+  else
+    echo "Frontend already points at Render — nothing to do."
+  fi
+  exit 0
+fi
+echo "Cloud backend not reachable — falling back to local backend + tunnel..."
+
 # 1. cloudflared binary
 if [ ! -x /tmp/cloudflared ]; then
   echo "Downloading cloudflared..."
